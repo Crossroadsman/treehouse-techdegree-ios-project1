@@ -116,30 +116,146 @@ func remainingInexperienced(players: [[String:Any]], totalPermitted: Int) -> Int
     return totalPermitted - inexperiencedPlayers
 }
 
-
-// Note that binning problems, of the sort described here are NP-hard
-// A simple 'good enough' method is to sort by value being binned (height)
-// Then starting with the largest value, place it into the emptiest available bin
-// (where, in this case, emptiest takes account of the fact that only [# total experienced players / 3] experienced players
-// and [# total inexperienced players / 3] inexperienced players
-// are permitted in each bin.
-
-
+/**
+ returns the sum of the heights of the players
+ */
+func getHeights(ofPlayers players: [[String:Any]]) -> Int {
+    var totalSoFar = 0
+    for player in players {
+        totalSoFar += player["Height"]! as! Int
+    }
+    return totalSoFar
+}
 
 /**
- The binning process is a variant of packing problems, which are NP-hard. This uses a common approach, similar to the LPT algorithm for multiprocessor scheduling.
+ returns the index of the team with the lowest total height.
  */
-func assign(players: [[String:Any]]) -> ([[String:Any]],[[String:Any]],[[String:Any]]) {
+func getLowestHeightTeam( teams: [ [[String:Any]] ]) -> Int {
+    var lowestValueSoFar: Int?
+    var lowestIndexSoFar = 0
+    
+    for (index, team) in teams.enumerated() {
+        let teamHeight = getHeights(ofPlayers: team)
+        if lowestValueSoFar == nil || teamHeight < lowestValueSoFar! {
+            lowestValueSoFar = teamHeight
+            lowestIndexSoFar = index
+        }
+    }
+    return lowestIndexSoFar
+}
+ 
+
+/**
+ Note that binning/packing problems, of the sort described here are NP-hard
+ A simple 'good enough' method (similar to the LPT algorithm for multiprocessor scheduling) is to sort by value being binned (height)
+ Then starting with the largest value, place it into the emptiest available bin
+ (where, in this case, emptiest takes account of the fact that only [# total experienced players / 3] experienced players
+ and [# total inexperienced players / 3] inexperienced players
+ are permitted in each bin.
+ - Parameter players: The player list (array of [String:Any]). Each player entity comprises:
+ Name: String
+ Height: Int
+ Experience: Bool
+ Guardians: [String]
+ - Parameter teamsCount: The number of teams over which to assign the players. Assumed to be a factor of the total number of players.
+ - Returns: An array of player arrays representing teams (e.g., [dragons, sharks, raptors]).
+ */
+func assign(players: [[String:Any]], teamsCount: Int) -> [[[String:Any]]] {
+    
+    var teams = [ [[String:Any]] ]()
+    for _ in 0 ..< teamsCount {
+        teams.append( [[String:Any]]())
+    }
+    
+    // IMPORTANT:
+    // we are making a couple of assumptions for this exercise:
+    // the number of total players will always be a multiple of the number of teams
+    // the number of experienced players will always be a multiple of the number of teams
+    let maxPlayersInTeam = players.count / teamsCount
+    
+    var totalExperiencedPlayers = 0
+    for player in players {
+        if isExperienced(player) {
+            totalExperiencedPlayers += 1
+        }
+    }
+    
+    let maxExperiencedInTeam = totalExperiencedPlayers / teamsCount
+    let maxInexperiencedInTeam = maxPlayersInTeam - maxExperiencedInTeam
     
     // sort ascending
-    // pop the last element
-    // which bin has the lowest total AND can take an element of this type
-    // add to that bin
-    // repeat
     var sortedPlayers = badSort(arr: players, key: "Height")
-    let last = sortedPlayers.removeLast()
-    return (sortedPlayers, sortedPlayers, sortedPlayers)
+    
+    // repeat
+    while sortedPlayers.count > 0 {
+        
+        /*
+        //debug
+        print("--- Sorted Players ---")
+        print(sortedPlayers)
+        print("--- End Sorted Players ---")
+        //end debug
+         */
+ 
+        // pop the last element
+        let last = sortedPlayers.removeLast()
+        /*
+        //debug
+        print("popping last: \(last)")
+        //end debug
+         */
+        
+        // which bin has the lowest total AND can take an element of this type
+        // add to that bin
+        var allocated = false
+        
+        var tempTeamsForAllocation = teams
+        while !allocated {
+            
+            if tempTeamsForAllocation.count == 0 {
+                fatalError()
+            }
+            
+            let index = getLowestHeightTeam(teams: tempTeamsForAllocation)
+            //debug:
+            /*
+            for (index, team) in teams.enumerated() {
+                print("team: \(index)")
+                print(team)
+                print("sum of heights: ")
+                print(getHeights(ofPlayers: team))
+            }
+            print("index of team with lowest total height: \(index)")
+             */
+            //end debug
+            
+            if last["Experience"]! as! Bool {
+                if remainingExperienced(players: teams[index], totalPermitted: maxExperiencedInTeam) > 0 {
+                    teams[index].append(last)
+                    tempTeamsForAllocation = teams
+                    allocated = true
+                } else {
+                    tempTeamsForAllocation.remove(at: index)
+                }
+            } else {
+                // inexperienced
+                if remainingInexperienced(players: teams[index], totalPermitted: maxInexperiencedInTeam) > 0 {
+                    teams[index].append(last)
+                    tempTeamsForAllocation = teams
+                    allocated = true
+                } else {
+                    tempTeamsForAllocation.remove(at: index)
+                }
+            }
+            
+        }
+        
+        
+    }
+    
+    return teams
 }
+
 
 //MARK: - Variables
 //-----------------
@@ -164,5 +280,4 @@ let players: [[String:Any]] = [
     ["Name": "Herschel Krustofski", "Height": 45, "Experience": true, "Guardians": ["Hyman Krustofski", "Rachel Krustofski"]]
 ]
 
-
-
+let assignedTeams = assign(players: players, teamsCount: 3)
