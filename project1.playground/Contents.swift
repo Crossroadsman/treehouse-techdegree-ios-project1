@@ -143,7 +143,105 @@ func getLowestHeightTeam( teams: [ [[String:Any]] ]) -> Int {
     }
     return lowestIndexSoFar
 }
- 
+
+
+/**
+ Extracts the experienced players from an array of players
+ */
+func getExperienced(players: [[String:Any]]) -> [[String:Any]] {
+    var outputArray = [[String:Any]]()
+    for player in players {
+        if isExperienced(player) {
+            outputArray.append(player)
+        }
+    }
+    return outputArray
+}
+
+/**
+ Extracts the inexperienced players from an array of players
+ */
+func getInexperienced(players: [[String:Any]]) -> [[String:Any]] {
+    var outputArray = [[String:Any]]()
+    for player in players {
+        if !isExperienced(player) {
+            outputArray.append(player)
+        }
+    }
+    return outputArray
+}
+
+/**
+ Simple Assign
+ */
+func simpleAssign(players: [[String:Any]], teamsCount: Int) -> [[[String:Any]]] {
+    
+    var teams = [ [[String:Any]] ]()
+    for _ in 0 ..< teamsCount {
+        teams.append( [[String:Any]]())
+    }
+    
+    // IMPORTANT:
+    // we are making a couple of assumptions for this exercise:
+    // the number of total players will always be a multiple of the number of teams
+    // the number of experienced players will always be a multiple of the number of teams
+    let maxPlayersInTeam = players.count / teamsCount
+    
+    let experiencedPlayers = getExperienced(players: players)
+    let inexperiencedPlayers = getInexperienced(players: players)
+    
+    let maxExperiencedInTeam = experiencedPlayers.count / teamsCount
+    let maxInexperiencedInTeam = maxPlayersInTeam - maxExperiencedInTeam
+    
+    
+    var unallocatedExperiencedPlayers = experiencedPlayers
+    var unallocatedInexperiencedPlayers = inexperiencedPlayers
+    
+    while unallocatedExperiencedPlayers.count > 0 {
+        let last = unallocatedExperiencedPlayers.removeLast()
+        for i in 0 ..< teams.count {
+            if remainingExperienced(players: teams[i], totalPermitted: maxExperiencedInTeam) > 0 {
+                teams[i].append(last)
+                break
+            }
+        }
+    }
+    
+    while unallocatedInexperiencedPlayers.count > 0 {
+        let last = unallocatedInexperiencedPlayers.removeLast()
+        for i in 0 ..< teams.count {
+            if remainingInexperienced(players: teams[i], totalPermitted: maxInexperiencedInTeam) > 0 {
+                teams[i].append(last)
+                break
+            }
+        }
+    }
+    
+    return teams
+}
+
+
+/**
+ Write a letter to guardians
+ */
+func writeLetters(toGuardiansOfTeams teams: [[[String:Any]]], withNames teamNames: [String], andSchedule schedule: [String:String]) -> [String] {
+    
+    var letters = [String]()
+    for (index, team) in teams.enumerated() {
+        
+        for player in team {
+            
+            for guardian in (player["Guardians"]! as! [String]) {
+                
+                letters.append("Dear \(guardian),\nThank you for registering for this season's youth soccer league.\nPlease be advised that your child, \(player["Name"]! as! String), has been assigned to Team \(teamNames[index]).\n\(player["Name"]! as! String)'s first practice will be held at the town youth center at the following date and time: \(schedule[teamNames[index]]!).\nWe look forward to seeing you.\nKind regards,\n\nTown Youth Soccer League Coordinator\n")
+                
+            }
+            
+        }
+        
+    }
+    return letters
+}
 
 /**
  Note that binning/packing problems, of the sort described here are NP-hard
@@ -173,12 +271,8 @@ func assign(players: [[String:Any]], teamsCount: Int) -> [[[String:Any]]] {
     // the number of experienced players will always be a multiple of the number of teams
     let maxPlayersInTeam = players.count / teamsCount
     
-    var totalExperiencedPlayers = 0
-    for player in players {
-        if isExperienced(player) {
-            totalExperiencedPlayers += 1
-        }
-    }
+    let experiencedPlayers = getExperienced(players: players)
+    let totalExperiencedPlayers = experiencedPlayers.count
     
     let maxExperiencedInTeam = totalExperiencedPlayers / teamsCount
     let maxInexperiencedInTeam = maxPlayersInTeam - maxExperiencedInTeam
@@ -189,21 +283,8 @@ func assign(players: [[String:Any]], teamsCount: Int) -> [[[String:Any]]] {
     // repeat
     while sortedPlayers.count > 0 {
         
-        /*
-        //debug
-        print("--- Sorted Players ---")
-        print(sortedPlayers)
-        print("--- End Sorted Players ---")
-        //end debug
-         */
- 
         // pop the last element
         let last = sortedPlayers.removeLast()
-        /*
-        //debug
-        print("popping last: \(last)")
-        //end debug
-         */
         
         // which bin has the lowest total AND can take an element of this type
         // add to that bin
@@ -217,17 +298,6 @@ func assign(players: [[String:Any]], teamsCount: Int) -> [[[String:Any]]] {
             }
             
             let index = getLowestHeightTeam(teams: tempTeamsForAllocation)
-            //debug:
-            /*
-            for (index, team) in teams.enumerated() {
-                print("team: \(index)")
-                print(team)
-                print("sum of heights: ")
-                print(getHeights(ofPlayers: team))
-            }
-            print("index of team with lowest total height: \(index)")
-             */
-            //end debug
             
             if last["Experience"]! as! Bool {
                 if remainingExperienced(players: teams[index], totalPermitted: maxExperiencedInTeam) > 0 {
@@ -259,6 +329,8 @@ func assign(players: [[String:Any]], teamsCount: Int) -> [[[String:Any]]] {
 
 //MARK: - Variables
 //-----------------
+//MARK: - ** PART 1 **
+// Manually create a single collection named 'players' that contains all information for all 18 players. Each player must themselves be represented by a Dictionary with String keys and the corresponding values
 let players: [[String:Any]] = [
     ["Name": "Joe Smith", "Height": 42, "Experience": true, "Guardians": ["Jim Smith", "Jan Smith"]],
     ["Name": "Jill Tanner", "Height": 36, "Experience": true, "Guardians": ["Clara Tanner"]],
@@ -280,4 +352,86 @@ let players: [[String:Any]] = [
     ["Name": "Herschel Krustofski", "Height": 45, "Experience": true, "Guardians": ["Hyman Krustofski", "Rachel Krustofski"]]
 ]
 
-let assignedTeams = assign(players: players, teamsCount: 3)
+let practiceDates = [
+    "Dragons" : "March 17, 1pm",
+    "Sharks" : "March 17, 3pm",
+    "Raptors" : "March 18, 1pm"
+]
+
+//MARK: - ** PART 2 **
+//--------------------
+//Create appropriate variables and logic to sort and store players into three teams: Sharks, Dragons and Raptors. Store the players for each team in collection variables named 'teamSharks', 'teamDragons', and 'teamRaptors'. Be sure that your logic results in all teams having the same number of experienced players on each
+
+let teamNames = ["Sharks", "Dragons", "Raptors"]
+
+var teams = simpleAssign(players: players, teamsCount: teamNames.count)
+
+var teamSharks = teams[0]
+var teamDragons = teams[1]
+var teamRaptors = teams[2]
+
+// tests (uncomment to run tests):
+/*
+teamSharks.count == teamDragons.count
+teamDragons.count == teamRaptors.count
+
+getExperienced(players: teamSharks).count == getExperienced(players: teamDragons).count
+getExperienced(players: teamDragons).count == getExperienced(players: teamRaptors).count
+*/
+
+//MARK - ** PART 2 ** (Exceeds expectations variant)
+//--------------------------------------------------
+//As previous section but also ensures that each team's average player height is within 1.5"
+
+teams = assign(players: players, teamsCount: [teamSharks, teamDragons, teamRaptors].count)
+
+(teamSharks, teamDragons, teamRaptors) = (teams[0], teams[1], teams[2])
+
+// tests (uncomment to run tests):
+/*
+teamSharks.count == teamDragons.count
+teamDragons.count == teamRaptors.count
+
+getExperienced(players: teamSharks).count == getExperienced(players: teamDragons).count
+getExperienced(players: teamDragons).count == getExperienced(players: teamRaptors).count
+
+let totalSharksHeights = getHeights(ofPlayers: teamSharks)
+let totalDragonsHeights = getHeights(ofPlayers: teamDragons)
+let totalRaptorsHeights = getHeights(ofPlayers: teamRaptors)
+
+let averageSharksHeights = Double(totalSharksHeights) / Double(teamSharks.count)
+let averageDragonsHeights = Double(totalDragonsHeights) / Double(teamDragons.count)
+let averageRaptorsHeights = Double(totalRaptorsHeights) / Double(teamRaptors.count)
+
+[averageSharksHeights, averageDragonsHeights, averageRaptorsHeights].max()! - [averageSharksHeights, averageDragonsHeights, averageRaptorsHeights].min()! < 1.5
+ */
+ 
+ 
+//MARK - ** PART 3 ** (Using Exceeds expectations version)
+//--------------------------------------------------------
+//Provide logic that prints a personalized letter to each of the guardians specifying:
+//- the player's name
+//- the guardian's name
+//- the team name
+//- date/time of first practice
+//
+//Letter must be stored in a collection variable named 'letters'.
+//When code is run, the letters should be printed in the console.
+let letters = writeLetters(toGuardiansOfTeams: [teamSharks, teamDragons, teamRaptors], withNames: teamNames, andSchedule: practiceDates)
+for letter in letters {
+    print(letter)
+}
+
+
+//test of variable names (uncomment to test):
+/*
+//part1
+players
+//part2
+teamSharks
+teamDragons
+teamRaptors
+//part3
+letters
+*/
+ 
