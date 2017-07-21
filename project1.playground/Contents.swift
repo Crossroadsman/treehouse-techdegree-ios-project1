@@ -24,7 +24,7 @@ import Foundation
 // Each child has the following information: Name, height (in inches), whether they have played soccer before, guardians' names.
 
 // Using Any here seems like a major smell, but without being able to use advanced types, it's not obvious that there is a better way
-let testPerson: [String:Any] = ["Name": "test", "Height": 66, "playedBefore": false, "guardians": ["mother", "father"]]
+//let testPerson: [String:Any] = ["Name": "test", "Height": 66, "playedBefore": false, "guardians": ["mother", "father"]]
 
 // Permitted tools:
 // Native types and collections,
@@ -422,6 +422,18 @@ for letter in letters {
     print(letter)
 }
 
+/*
+//test correct number of letters
+var numberOfGuardians: Int {
+    var guardians = 0
+    for player in players {
+        guardians += (player["Guardians"]! as! [String]).count
+    }
+    return guardians
+}
+
+letters.count == numberOfGuardians
+*/
 
 //test of variable names (uncomment to test):
 /*
